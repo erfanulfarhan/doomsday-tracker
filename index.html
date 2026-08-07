@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Road to Doomsday — Avengers: Doomsday watch tracker</title>
+<meta name="description" content="Track every film and series on the road to Avengers: Doomsday. Release order or in-universe order, progress saved on your device.">
+<meta name="theme-color" content="#0A0C0A">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Doomsday">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta property="og:title" content="Road to Doomsday">
+<meta property="og:description" content="Every film and series you need before Avengers: Doomsday — tracked.">
+<meta property="og:type" content="website">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<a class="skip" href="#list">Skip to the list</a>
+
+<header class="clock" id="top">
+  <div class="clock__inner">
+    <div class="wordmark">
+      <span class="wordmark__pre">The road to</span>
+      <h1 class="wordmark__title">Doomsday</h1>
+      <span class="wordmark__date" id="release-date">December 18, 2026</span>
+    </div>
+
+    <div class="countdown" id="countdown" aria-live="off">
+      <div class="unit"><span class="unit__n" data-cd="days">—</span><span class="unit__l">days</span></div>
+      <div class="unit"><span class="unit__n" data-cd="hours">—</span><span class="unit__l">hrs</span></div>
+      <div class="unit"><span class="unit__n" data-cd="mins">—</span><span class="unit__l">min</span></div>
+      <div class="unit"><span class="unit__n" data-cd="secs">—</span><span class="unit__l">sec</span></div>
+    </div>
+  </div>
+
+  <div class="gauge" id="gauge">
+    <div class="gauge__track"><div class="gauge__fill" id="gauge-fill"></div></div>
+    <div class="gauge__read">
+      <strong id="pct">0%</strong>
+      <span id="tally">0 of 0 watched</span>
+      <span class="dot" aria-hidden="true">·</span>
+      <span id="remaining">— left</span>
+    </div>
+  </div>
+
+  <button class="uptonext" id="uptonext" type="button" hidden>
+    <span class="uptonext__l">Up next</span>
+    <span class="uptonext__t"></span>
+  </button>
+</header>
+
+<main>
+  <section class="controls" aria-label="Tracker controls">
+    <div class="pillbar">
+      <div class="pillbar__group" role="radiogroup" aria-label="Route" id="route"></div>
+      <button class="pill" id="order-toggle" type="button" aria-pressed="false">Timeline order</button>
+      <button class="pill" id="hide-watched" type="button" aria-pressed="false">Hide watched</button>
+      <span class="pillbar__gap" aria-hidden="true"></span>
+      <button class="pill" id="share" type="button">Share</button>
+      <button class="pill" id="reset" type="button">Reset</button>
+    </div>
+    <p class="controls__hint" id="controls-hint"></p>
+  </section>
+
+  <div class="banner" id="import-banner" hidden>
+    <p><strong id="import-summary"></strong> was shared with you.</p>
+    <div class="banner__acts">
+      <button class="btn" id="import-accept" type="button">Copy to my tracker</button>
+      <button class="btn btn--quiet" id="import-dismiss" type="button">Keep mine</button>
+    </div>
+  </div>
+
+  <div id="list" class="list"></div>
+
+  <section class="finale" id="finale">
+    <span class="finale__l">Then</span>
+    <h2 class="finale__t">Avengers: Doomsday</h2>
+    <p class="finale__d"><span id="finale-date">December 18, 2026</span></p>
+    <p class="finale__n" id="finale-note">Finish the list and this is all that's left.</p>
+  </section>
+
+  <section class="notes">
+    <details>
+      <summary>How the two orders differ</summary>
+      <p><strong>Release order</strong> is how it was made and how the reveals were built. If this is your first pass, use it — twists like the Winter Soldier's identity or Endgame's returns only land in the order they were written.</p>
+      <p><strong>In-universe order</strong> sorts by when things happen on the timeline, so 1943 comes before 1995 comes before 2012. It's a rewatch order. It spoils things. It's also the only way to feel how long Steve was in the ice.</p>
+    </details>
+    <details>
+      <summary>Why some entries are marked essential and others aren't</summary>
+      <p>Essentials are the entries that a Doomsday plot thread runs directly through: the multiverse rules, the TVA, the incursions, and the characters confirmed to show up. Everything else is in <em>Full MCU</em> — good films, but you can walk in without them.</p>
+      <p>The <em>Everything</em> route adds the Fox X-Men films and the Netflix seasons. Deadpool &amp; Wolverine made the Fox universe explicitly canon, so those films are now background rather than trivia.</p>
+    </details>
+    <details>
+      <summary>Add this to your phone</summary>
+      <p><strong>iPhone — Safari:</strong> tap Share, then <em>Add to Home Screen</em>.</p>
+      <p><strong>Android — Chrome:</strong> tap the three-dot menu, then <em>Add to Home screen</em>.</p>
+      <p>It opens full-screen and keeps your progress.</p>
+    </details>
+    <details>
+      <summary>Where your progress lives</summary>
+      <p>On this device, in your browser, and nowhere else. There's no account and no server keeping a copy. Clearing your browser data clears your ticks, and a different phone is a different list — use <em>Share progress</em> to move it across.</p>
+    </details>
+  </section>
+
+  <footer class="foot">
+    <p>Runtimes are approximate and include credits. Dates and casting for unreleased titles follow the studio's latest public announcements and do move.</p>
+    <p>A fan-made tracker. Not affiliated with Marvel Studios or The Walt Disney Company.</p>
+  </footer>
+</main>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

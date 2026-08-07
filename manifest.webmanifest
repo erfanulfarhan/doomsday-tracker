@@ -1,0 +1,16 @@
+{
+  "name": "Road to Doomsday",
+  "short_name": "Doomsday",
+  "description": "Track every film and series on the road to Avengers: Doomsday.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0A0C0A",
+  "theme_color": "#0A0C0A",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}
