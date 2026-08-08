@@ -345,7 +345,7 @@
       btn.className = 'spoiler__btn';
       btn.dataset.id = entry.id;
       btn.setAttribute('aria-expanded', String(shown));
-      btn.textContent = 'How it ties in — reveal spoiler';
+      btn.textContent = 'How it ties in';
       btn.hidden = shown;
 
       const note = document.createElement('p');
@@ -521,6 +521,13 @@
     const b = ev.target.closest('.spoiler__btn');
     if (!b) return;
     ev.preventDefault();
+    // Two-step: first tap arms a warning, second tap reveals.
+    if (b.dataset.armed !== '1') {
+      b.dataset.armed = '1';
+      b.classList.add('is-armed');
+      b.textContent = 'Spoilers ahead — tap to reveal';
+      return;
+    }
     revealed.add(b.dataset.id);
     b.setAttribute('aria-expanded', 'true');
     b.hidden = true;

@@ -754,3 +754,32 @@ main { position: relative; z-index: 1; }
 @media (prefers-reduced-motion: reduce) {
   .wordmark__title { animation: none; }
 }
+
+/* ================================================ bolder gold accents */
+/* animated phase headers: a gold highlight sweeps along the rule */
+.phase__head { position: relative; border-bottom-color: transparent; }
+.phase__head::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 1.5px;
+  background-color: var(--rule);
+  background-image: linear-gradient(90deg, transparent, var(--brass), transparent);
+  background-repeat: no-repeat;
+  background-size: 42% 100%;
+  background-position: -42% 0;
+  animation: phase-sheen 4.5s linear infinite;
+}
+@keyframes phase-sheen { to { background-position: 142% 0; } }
+
+/* a pulsing gold diamond marking each phase */
+.phase__name::before {
+  content: ""; display: inline-block; width: .5rem; height: .5rem; margin-right: .55rem;
+  background: var(--brass); transform: rotate(45deg); vertical-align: middle;
+  box-shadow: 0 0 10px rgba(200,153,60,.5);
+  animation: phase-pip 2.6s ease-in-out infinite;
+}
+@keyframes phase-pip { 0%,100% { opacity: .55; } 50% { opacity: 1; } }
+
+/* essentials become bold filled-gold badges */
+.tag--core { color: var(--ink); background: var(--brass); border-color: var(--brass); font-weight: 700; }
+
+/* two-step spoiler: armed state turns to a red warning */
+.spoiler__btn.is-armed { color: #e0906a; background: rgba(180,85,63,.16); border-color: #b4553f; }
