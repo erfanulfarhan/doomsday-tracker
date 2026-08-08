@@ -721,9 +721,4 @@ main { position: relative; z-index: 1; }
   .clock::before, .clock::after { animation: none; }
 }
 
-/* The starfield is a dark-mode effect — light stars on the cream light
-   theme just read as dust, so hide it there (mirrors the theme selectors). */
-@media (prefers-color-scheme: light) {
-  :root:not([data-theme="dark"]) #fx-stars { display: none; }
-}
-:root[data-theme="light"] #fx-stars { display: none; }
+/* The energy field renders in both themes (fx.js adapts its colours/blend). */
