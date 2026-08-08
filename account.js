@@ -115,6 +115,8 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
     else renderAnon();
   });
   sb.auth.onAuthStateChange((event, session) => {
+    // Arriving from a reset-password email: let them set a new password.
+    if (event === 'PASSWORD_RECOVERY') ui.openModal('newpw');
     if (session && !user) onSignedIn(session);
     else if (!session && user) onSignedOut();
   });
@@ -145,6 +147,34 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
     }
   }
 
+  async function sendReset(email) {
+    email = (email || '').trim();
+    if (!email) return err('Enter your email.');
+    setBusy(true);
+    try {
+      const { error } = await sb.auth.resetPasswordForEmail(email, {
+        redirectTo: location.origin + location.pathname,
+      });
+      if (error) return err(error.message);
+      return err("If that email has an account, a reset link is on its way. Check your inbox.", 'ok');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function setNewPassword(password) {
+    if (!password || password.length < 6) return err('Password must be at least 6 characters.');
+    setBusy(true);
+    try {
+      const { error } = await sb.auth.updateUser({ password });
+      if (error) return err(error.message);
+      err("Password updated — you're signed in.", 'ok');
+      setTimeout(closeModal, 1300);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   /* ================= UI ================= */
 
   function buildUI() {
@@ -169,10 +199,12 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
           <button class="acct-tab" data-mode="signup" type="button">Create account</button>
         </div>
         <form class="acct-form">
-          <label>Email<input type="email" name="email" autocomplete="email" required></label>
-          <label>Password<input type="password" name="password" autocomplete="current-password" minlength="6" required></label>
+          <label class="acct-f-email">Email<input type="email" name="email" autocomplete="email"></label>
+          <label class="acct-f-pass">Password<input type="password" name="password" autocomplete="current-password" minlength="6"></label>
           <p class="acct-msg" hidden></p>
           <button class="acct-go" type="submit">Sign in</button>
+          <button class="acct-forgot" type="button">Forgot password?</button>
+          <button class="acct-back" type="button" hidden>&larr; Back to sign in</button>
         </form>
       </div>`;
     document.body.appendChild(overlay);
@@ -181,17 +213,44 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
     const form = overlay.querySelector('.acct-form');
     const msg = overlay.querySelector('.acct-msg');
     const goBtn = overlay.querySelector('.acct-go');
+    const heading = overlay.querySelector('.acct-h');
+    const sub = overlay.querySelector('.acct-sub');
+    const tabsWrap = overlay.querySelector('.acct-tabs');
+    const emailLabel = overlay.querySelector('.acct-f-email');
+    const passLabel = overlay.querySelector('.acct-f-pass');
+    const forgot = overlay.querySelector('.acct-forgot');
+    const back = overlay.querySelector('.acct-back');
     const tabs = [...overlay.querySelectorAll('.acct-tab')];
+
+    const SUB_DEFAULT = 'Create an account to sync your ticks across every device — phone, laptop, anywhere.';
+    const MODES = {
+      signin: { go: 'Sign in',         tabs: true,  email: true,  pass: true,  forgot: true,  back: false, h: 'Save your progress',   s: SUB_DEFAULT },
+      signup: { go: 'Create account',  tabs: true,  email: true,  pass: true,  forgot: false, back: false, h: 'Save your progress',   s: SUB_DEFAULT },
+      reset:  { go: 'Send reset link', tabs: false, email: true,  pass: false, forgot: false, back: true,  h: 'Reset your password',  s: "Enter your email and we'll send you a link to set a new one." },
+      newpw:  { go: 'Update password', tabs: false, email: false, pass: true,  forgot: false, back: false, h: 'Set a new password',   s: 'Choose a new password for your account.' },
+    };
     let mode = 'signin';
+    let goLabel = MODES.signin.go;
 
     function setMode(m) {
-      mode = m;
+      const c = MODES[m] || MODES.signin;
+      mode = m; goLabel = c.go;
       tabs.forEach((t) => t.classList.toggle('is-on', t.dataset.mode === m));
-      goBtn.textContent = m === 'signup' ? 'Create account' : 'Sign in';
-      form.password.autocomplete = m === 'signup' ? 'new-password' : 'current-password';
+      tabsWrap.hidden = !c.tabs;
+      emailLabel.hidden = !c.email;
+      passLabel.hidden = !c.pass;
+      forgot.hidden = !c.forgot;
+      back.hidden = !c.back;
+      goBtn.textContent = c.go;
+      heading.textContent = c.h;
+      sub.textContent = c.s;
+      form.password.autocomplete = (m === 'signup' || m === 'newpw') ? 'new-password' : 'current-password';
+      form.password.placeholder = m === 'newpw' ? 'New password' : '';
       hideMsg();
     }
     tabs.forEach((t) => (t.onclick = () => setMode(t.dataset.mode)));
+    forgot.onclick = () => setMode('reset');
+    back.onclick = () => setMode('signin');
 
     chip.onclick = () => { if (user) return openMenu(); openModal(); };
     overlay.querySelector('.acct-x').onclick = closeModal;
@@ -200,11 +259,17 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
     form.addEventListener('submit', (e) => {
       e.preventDefault();
+      if (mode === 'reset') return sendReset(form.email.value);
+      if (mode === 'newpw') return setNewPassword(form.password.value);
       doAuth(mode, form.email.value, form.password.value);
     });
 
-    function openModal() { setMode('signin'); overlay.hidden = false; setTimeout(() => form.email.focus(), 50); }
-    function closeModal() { overlay.hidden = true; form.reset(); hideMsg(); }
+    function openModal(m) {
+      setMode(m || 'signin');
+      overlay.hidden = false;
+      setTimeout(() => (emailLabel.hidden ? form.password : form.email).focus(), 50);
+    }
+    function closeModal() { overlay.hidden = true; form.reset(); setMode('signin'); }
     function showMsg(text, kind) { msg.hidden = false; msg.textContent = text; msg.className = 'acct-msg' + (kind === 'ok' ? ' is-ok' : ' is-err'); }
     function hideMsg() { msg.hidden = true; msg.textContent = ''; }
 
@@ -220,7 +285,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
       if (!menu.hidden && !menu.contains(e.target) && e.target !== chip && !chip.contains(e.target)) menu.hidden = true;
     });
 
-    return { chip, overlay, openModal, closeModal, showMsg, hideMsg, setBusy: (b) => { goBtn.disabled = b; goBtn.textContent = b ? '…' : (mode === 'signup' ? 'Create account' : 'Sign in'); }, menu };
+    return { chip, overlay, openModal, closeModal, setMode, showMsg, hideMsg, setBusy: (b) => { goBtn.disabled = b; goBtn.textContent = b ? '…' : goLabel; }, menu };
   }
 
   // helpers bound to the built UI
@@ -296,6 +361,12 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
       border:0;border-radius:10px;padding:.75rem;cursor:pointer;transition:filter .15s}
     .acct-go:hover{filter:brightness(1.08)}
     .acct-go:disabled{opacity:.6;cursor:default}
+    .acct-forgot,.acct-back{align-self:center;background:none;border:0;color:var(--type-dim);
+      font:500 .8rem/1 var(--body);cursor:pointer;padding:.35rem;margin-top:.15rem;
+      text-decoration:underline;text-underline-offset:2px}
+    .acct-forgot:hover,.acct-back:hover{color:var(--brass)}
+    /* explicit display on these beats the UA [hidden] rule, so hide them by hand */
+    .acct-tabs[hidden],.acct-form label[hidden],.acct-forgot[hidden],.acct-back[hidden]{display:none}
     @media(max-width:520px){.acct-chip__t{max-width:6rem}}
     `;
     const tag = document.createElement('style');
