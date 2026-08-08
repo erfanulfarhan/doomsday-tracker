@@ -1,7 +1,7 @@
 /* Offline shell. Bump CACHE whenever you edit data.js/app.js/styles.css,
    otherwise returning visitors keep the old copy until their cache expires. */
 
-const CACHE = 'rtd-v8';
+const CACHE = 'rtd-v9';
 const SHELL = [
   './',
   './index.html',
