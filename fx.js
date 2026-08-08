@@ -97,19 +97,17 @@
       // nodes
       for (i = 0; i < pts.length; i++) {
         a = pts[i];
-        if (!reduce) {
-          a.x += a.vx; a.y += a.vy;
-          a.vx *= 0.995; a.vy *= 0.995;                    // settle after a shove
-          a.vx += (Math.random() - 0.5) * 0.01 * dpr;      // tiny drift
-          if (a.x < 0 || a.x > W) a.vx *= -1;
-          if (a.y < 0 || a.y > H) a.vy *= -1;
-        }
+        a.x += a.vx; a.y += a.vy;
+        a.vx *= 0.995; a.vy *= 0.995;                    // settle after a shove
+        a.vx += (Math.random() - 0.5) * 0.01 * dpr;      // tiny drift
+        if (a.x < 0 || a.x > W) a.vx *= -1;
+        if (a.y < 0 || a.y > H) a.vy *= -1;
         var near = 0;
         if (mouse.x != null) {
           dx = a.x - mouse.x; dy = a.y - mouse.y; d = Math.hypot(dx, dy);
           if (d < RADIUS) {
             near = 1 - d / RADIUS;
-            if (!reduce) { a.vx -= (dx / (d || 1)) * near * 0.06 * dpr; a.vy -= (dy / (d || 1)) * near * 0.06 * dpr; } // pull in
+            a.vx -= (dx / (d || 1)) * near * 0.06 * dpr; a.vy -= (dy / (d || 1)) * near * 0.06 * dpr; // pull in
             ctx.strokeStyle = a.col; ctx.globalAlpha = 0.15 + near * 0.6; ctx.lineWidth = dpr * (0.6 + near);
             ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(mouse.x, mouse.y); ctx.stroke();
             ctx.globalAlpha = 1;
@@ -155,7 +153,7 @@
       }
 
       ctx.globalCompositeOperation = 'source-over';
-      if (!reduce || sparks.length || rings.length) requestAnimationFrame(frame);
+      requestAnimationFrame(frame);
     }
 
     seed();

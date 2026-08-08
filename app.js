@@ -589,13 +589,12 @@
   tickClock();
   setInterval(tickClock, 1000);
 
-  // Offline support. Needs https and the real multi-file deploy — the
-  // single-file bundle strips the manifest and has no sw.js to register.
-  if ('serviceWorker' in navigator
-      && location.protocol === 'https:'
-      && document.querySelector('link[rel="manifest"]')) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('sw.js').catch(() => {});
-    });
+  // The old offline service worker was serving stale copies of the site, so
+  // it's retired: actively unregister any previously-installed worker and wipe
+  // its caches so every visit loads the latest build straight from the network.
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations()
+      .then((rs) => rs.forEach((r) => r.unregister())).catch(() => {});
+    if (window.caches) caches.keys().then((ks) => ks.forEach((k) => caches.delete(k))).catch(() => {});
   }
 }());
