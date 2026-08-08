@@ -257,15 +257,16 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
     }
 
     const rows = await loadBoard();
-    const max = Math.max(1, ...rows.map((r) => r.watched_count || 0));
+    const total = (window.RTD && window.RTD.total) || 0;
     const items = rows.map((r, i) => {
       const mine = r.user_id === user.id ? ' is-me' : '';
-      const pct = Math.round(((r.watched_count || 0) / max) * 100);
+      const c = r.watched_count || 0;
+      const pct = total ? Math.round((c / total) * 100) : 0;
       return '<li class="lb__item' + mine + '">' +
         '<span class="lb__rank">' + (i + 1) + '</span>' +
         '<span class="lb__who">' + escapeHtml(r.display_name || 'Anonymous') + '</span>' +
         '<span class="lb__bar"><span style="width:' + pct + '%"></span></span>' +
-        '<span class="lb__n">' + (r.watched_count || 0) + '</span></li>';
+        '<span class="lb__n">' + c + ' / ' + total + '</span></li>';
     }).join('');
     body.innerHTML =
       '<ol class="lb__list">' + (items || '<p class="lb__msg">No one here yet.</p>') + '</ol>' +

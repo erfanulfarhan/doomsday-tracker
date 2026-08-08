@@ -613,6 +613,7 @@
       render();
     },
     onPersist: null,
+    total: IDS.length,   // total titles in the catalogue (leaderboard denominator)
   };
 
   /* ------------------------------------------------ boot */
