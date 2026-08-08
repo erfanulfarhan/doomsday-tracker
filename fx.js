@@ -92,6 +92,28 @@
     { m: 'BP', name: 'Black Panther', role: 'Protector of Wakanda', c1: '#5b3fa6', c2: '#141019' },
   ];
 
+  // Original stroke emblems (viewBox 0 0 100 100). Symbolic, not logos:
+  // idle = continuous CSS motion ('spin' | 'pulse' | '').
+  var EMBLEMS = {
+    'Doctor Doom':     { idle: '',      svg: '<path d="M28 26 H72 V54 C72 72 50 82 50 82 C50 82 28 72 28 54 Z"/><path d="M40 46 H46"/><path d="M54 46 H60"/>' },
+    'Iron Man':        { idle: 'pulse', svg: '<circle cx="50" cy="50" r="30"/><circle cx="50" cy="50" r="15"/><path d="M50 35 L63 57 H37 Z"/>' },
+    'Captain America': { idle: '',      svg: '<circle cx="50" cy="50" r="32"/><path d="M50 26 L57 44 L76 44 L61 56 L67 74 L50 63 L33 74 L39 56 L24 44 L43 44 Z"/>' },
+    'Thor':            { idle: '',      svg: '<rect x="30" y="26" width="40" height="20" rx="3"/><path d="M50 46 V80"/><path d="M62 8 L53 27 L61 25 L51 45"/>' },
+    'Hulk':            { idle: '',      svg: '<circle cx="50" cy="50" r="9"/><path d="M50 41 V22"/><path d="M50 59 V78"/><path d="M41 50 H22"/><path d="M59 50 H78"/><path d="M43 43 L30 30"/><path d="M57 43 L70 30"/><path d="M43 57 L30 70"/><path d="M57 57 L70 70"/>' },
+    'Doctor Strange':  { idle: 'spin',  svg: '<circle cx="50" cy="50" r="30"/><circle cx="50" cy="50" r="17"/><circle cx="50" cy="50" r="5"/><path d="M50 33 V20"/><path d="M50 67 V80"/><path d="M33 50 H20"/><path d="M67 50 H80"/>' },
+    'Scarlet Witch':   { idle: 'spin',  svg: '<path d="M50 22 C76 22 78 52 50 52 C30 52 30 74 50 78"/><path d="M50 52 C62 52 64 66 50 68"/>' },
+    'Loki':            { idle: '',      svg: '<path d="M42 72 C31 52 31 32 24 20 C41 27 45 46 50 62"/><path d="M58 72 C69 52 69 32 76 20 C59 27 55 46 50 62"/>' },
+    'Spider-Man':      { idle: 'spin',  svg: '<path d="M50 20 V80"/><path d="M20 50 H80"/><path d="M29 29 L71 71"/><path d="M71 29 L29 71"/><path d="M50 33 A21 21 0 0 1 67 50"/><path d="M50 33 A21 21 0 0 0 33 50"/>' },
+    'Black Panther':   { idle: '',      svg: '<path d="M35 22 C41 44 43 60 41 80"/><path d="M50 20 C54 44 54 60 50 82"/><path d="M65 22 C59 44 57 60 59 80"/>' },
+  };
+
+  function drawIn(svg, start) {
+    if (!svg || !A) return;
+    var shapes = svg.querySelectorAll('path, line, circle, rect, polygon, polyline');
+    A({ targets: shapes, strokeDashoffset: [A.setDashoffset, 0],
+        duration: 850, delay: A.stagger(70, { start: start }), easing: 'easeInOutSine' });
+  }
+
   function roster() {
     var finale = document.querySelector('.finale');
     if (!finale) return;
@@ -111,8 +133,9 @@
       card.className = 'hero-card';
       card.style.setProperty('--c1', r.c1);
       card.style.setProperty('--c2', r.c2);
+      var em = EMBLEMS[r.name] || { idle: '', svg: '<span>' + r.m + '</span>' };
       card.innerHTML =
-        '<span class="hero-card__disc" aria-hidden="true"><span>' + r.m + '</span></span>' +
+        '<span class="hero-card__disc ' + em.idle + '" aria-hidden="true"><svg viewBox="0 0 100 100">' + em.svg + '</svg></span>' +
         '<h3 class="hero-card__name">' + r.name + '</h3>' +
         '<p class="hero-card__role">' + r.role + '</p>';
       grid.appendChild(card);
@@ -129,8 +152,10 @@
         if (!e.isIntersecting) return;
         io.unobserve(e.target);
         var i = cards.indexOf(e.target);
+        var d = (i % 5) * 70;
         A({ targets: e.target, opacity: [0, 1], translateY: [24, 0], scale: [0.96, 1],
-            duration: 650, delay: (i % 5) * 70, easing: 'easeOutCubic' });
+            duration: 650, delay: d, easing: 'easeOutCubic' });
+        drawIn(e.target.querySelector('svg'), d + 150);
       });
     }, { threshold: 0.2 });
     cards.forEach(function (el) { io.observe(el); });

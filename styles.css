@@ -761,3 +761,18 @@ main { position: relative; z-index: 1; }
   :root:not([data-theme="dark"]) #fx-stars { display: none; }
 }
 :root[data-theme="light"] #fx-stars { display: none; }
+
+/* animated character emblems inside the roster discs */
+.hero-card__disc { transition: transform .2s ease; }
+.hero-card__disc svg { width: 2.15rem; height: 2.15rem; overflow: visible; display: block; }
+.hero-card__disc svg * { fill: none; stroke: #fff; stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; }
+.hero-card__disc.spin svg { animation: emb-spin 16s linear infinite; transform-origin: 50% 50%; }
+.hero-card__disc.pulse svg { animation: emb-pulse 2.8s ease-in-out infinite; transform-origin: 50% 50%; }
+@keyframes emb-spin { to { transform: rotate(360deg); } }
+@keyframes emb-pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.14); } }
+.hero-card:hover .hero-card__disc { transform: translateY(-2px) scale(1.06); }
+.hero-card:hover .hero-card__disc svg { filter: drop-shadow(0 0 7px rgba(255,255,255,.6)); }
+.hero-card:hover .hero-card__disc.spin svg { animation-duration: 4.5s; }
+@media (prefers-reduced-motion: reduce) {
+  .hero-card__disc.spin svg, .hero-card__disc.pulse svg { animation: none; }
+}
