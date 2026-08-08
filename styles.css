@@ -722,3 +722,35 @@ main { position: relative; z-index: 1; }
 }
 
 /* The energy field renders in both themes (fx.js adapts its colours/blend). */
+
+/* ================================================ spoiler-gated notes */
+.spoiler { margin-top: .4rem; }
+.spoiler__btn {
+  display: inline-flex; align-items: center; gap: .4rem; cursor: pointer;
+  font: 600 .76rem/1 var(--body); color: var(--brass);
+  background: var(--brass-glow); border: 1px solid var(--brass-lo); border-radius: 999px;
+  padding: .38rem .75rem; transition: background .15s, transform .1s;
+}
+.spoiler__btn::before { content: "\26A0"; font-size: .8em; }
+.spoiler__btn:hover { background: rgba(200,153,60,.22); }
+.spoiler__btn:active { transform: translateY(1px); }
+.spoiler__text.is-revealing { animation: spoiler-in .42s ease both; }
+@keyframes spoiler-in {
+  from { opacity: 0; filter: blur(6px); transform: translateY(-3px); }
+  to   { opacity: 1; filter: blur(0); transform: none; }
+}
+
+/* ================================================ cinematic wordmark sheen */
+.wordmark__title {
+  background: linear-gradient(100deg,
+    var(--type) 0%, var(--type) 38%, var(--brass) 50%, var(--type) 62%, var(--type) 100%);
+  background-size: 260% 100%;
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; color: transparent;
+  filter: drop-shadow(0 0 22px rgba(200,153,60,.22));
+  animation: wordmark-sheen 7s linear infinite;
+}
+@keyframes wordmark-sheen { to { background-position: -260% 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .wordmark__title { animation: none; }
+}

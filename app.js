@@ -294,6 +294,10 @@
     return section;
   }
 
+  // Spoiler notes stay gated until asked for. Revealed ids persist across
+  // re-renders (kept in memory only — a fresh visit re-hides them).
+  const revealed = new Set();
+
   function buildRow(entry) {
     const watched = state.watched.has(entry.id);
 
@@ -331,10 +335,27 @@
     main.appendChild(meta);
 
     if (entry.note) {
+      const shown = revealed.has(entry.id);
+
+      const spoiler = document.createElement('div');
+      spoiler.className = 'spoiler';
+
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'spoiler__btn';
+      btn.dataset.id = entry.id;
+      btn.setAttribute('aria-expanded', String(shown));
+      btn.textContent = 'How it ties in — reveal spoiler';
+      btn.hidden = shown;
+
       const note = document.createElement('p');
-      note.className = 'row__note';
+      note.className = 'row__note spoiler__text';
       note.textContent = entry.note;
-      main.appendChild(note);
+      note.hidden = !shown;
+
+      spoiler.appendChild(btn);
+      spoiler.appendChild(note);
+      main.appendChild(spoiler);
     }
 
     row.appendChild(main);
@@ -494,6 +515,18 @@
   el.list.addEventListener('change', (ev) => {
     const box = ev.target.closest('.row__box');
     if (box) toggle(box.dataset.id, box.checked);
+  });
+
+  el.list.addEventListener('click', (ev) => {
+    const b = ev.target.closest('.spoiler__btn');
+    if (!b) return;
+    ev.preventDefault();
+    revealed.add(b.dataset.id);
+    b.setAttribute('aria-expanded', 'true');
+    b.hidden = true;
+    const note = b.parentNode.querySelector('.spoiler__text');
+    note.hidden = false;
+    note.classList.add('is-revealing');
   });
 
   el.route.addEventListener('click', (ev) => {
