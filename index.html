@@ -102,7 +102,8 @@
     </details>
     <details>
       <summary>Where your progress lives</summary>
-      <p>On this device, in your browser, and nowhere else. There's no account and no server keeping a copy. Clearing your browser data clears your ticks, and a different phone is a different list — use <em>Share progress</em> to move it across.</p>
+      <p><strong>Signed out:</strong> on this device only, in your browser. Clearing your browser data clears your ticks, and a different phone is a different list.</p>
+      <p><strong>Signed in</strong> (the button top-right): your progress is saved to your account and synced to every device you sign in on. Signing in never erases ticks you've already made — it merges them in.</p>
     </details>
   </section>
 
@@ -114,7 +115,13 @@
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
+<script>
+  // Supabase project credentials — the anon key is public by design (row-level
+  // security guards the data). Filled in at deploy time.
+  window.SUPA = { url: 'https://cgebymftbitnkdemttow.supabase.co', anon: 'sb_publishable_8kKUdKYucRKPnxp0yJtevA_zP8Vw-f7' };
+</script>
 <script src="data.js"></script>
 <script src="app.js"></script>
+<script type="module" src="account.js"></script>
 </body>
 </html>

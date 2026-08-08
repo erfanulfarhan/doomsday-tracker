@@ -78,6 +78,10 @@
     write(STORE.route, state.route);
     write(STORE.order, state.order);
     write(STORE.hide, state.hide);
+    // Optional cloud sync (account.js) hooks in here. No-op when signed out.
+    if (window.RTD && typeof window.RTD.onPersist === 'function') {
+      window.RTD.onPersist(window.RTD.exportState());
+    }
   }
 
   /* ------------------------------------------------ share codes */
@@ -542,6 +546,34 @@
     el.banner.hidden = true;
     clearHash();
   });
+
+  /* ------------------------------------------------ cloud bridge */
+
+  // A tiny surface so account.js (Supabase sync) can read/replace the whole
+  // of the user's progress without reaching into internals. onPersist is set
+  // by account.js while signed in, and left null otherwise.
+  window.RTD = {
+    exportState() {
+      return {
+        watched: [...state.watched],
+        route: state.route,
+        order: state.order,
+        hide: state.hide,
+      };
+    },
+    importState(data) {
+      if (!data) return;
+      if (Array.isArray(data.watched)) {
+        state.watched = new Set(data.watched.filter((id) => BY_ID.has(id)));
+      }
+      if (data.route && ROUTES[data.route]) state.route = data.route;
+      state.order = data.order === 'chrono' ? 'chrono' : 'release';
+      state.hide = !!data.hide;
+      persist();
+      render();
+    },
+    onPersist: null,
+  };
 
   /* ------------------------------------------------ boot */
 

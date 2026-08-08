@@ -1,0 +1,305 @@
+/* =============================================================
+   ROAD TO DOOMSDAY — optional accounts + cloud sync
+   -------------------------------------------------------------
+   Auth and storage are Supabase. Progress is one JSON row per
+   user in the `progress` table, guarded by row-level security so
+   a signed-in user can only ever read or write their own row.
+
+   With no config (or no session) the tracker behaves exactly as
+   before — everything lives in localStorage, no network calls.
+
+   Signing in never destroys local ticks: on sign-in we UNION the
+   local and cloud watched-sets, apply the result, and push it up.
+   ============================================================= */
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+(function () {
+  'use strict';
+
+  const CFG = window.SUPA || {};
+  const configured =
+    CFG.url && CFG.anon && !/PLACEHOLDER/.test(String(CFG.url) + String(CFG.anon));
+
+  injectStyles();
+  const ui = buildUI();
+
+  if (!configured) {
+    // Accounts aren't wired up yet — hide the control, stay local-only.
+    ui.chip.hidden = true;
+    return;
+  }
+
+  const sb = createClient(CFG.url, CFG.anon, {
+    auth: { persistSession: true, autoRefreshToken: true },
+  });
+
+  let user = null;
+  let applyingRemote = false;
+  let pushTimer = null;
+
+  /* ---- cloud read / write ---- */
+
+  async function pull() {
+    const { data, error } = await sb
+      .from('progress')
+      .select('data')
+      .eq('user_id', user.id)
+      .maybeSingle();
+    if (error) { console.warn('pull failed', error.message); return null; }
+    return data ? data.data : null;
+  }
+
+  async function push(stateData) {
+    if (!user) return;
+    const { error } = await sb.from('progress').upsert({
+      user_id: user.id,
+      data: stateData,
+      updated_at: new Date().toISOString(),
+    });
+    if (error) { console.warn('push failed', error.message); setSaved('error'); }
+    else setSaved('ok');
+  }
+
+  function schedulePush(stateData) {
+    setSaved('saving');
+    clearTimeout(pushTimer);
+    pushTimer = setTimeout(() => push(stateData), 700);
+  }
+
+  function applyRemote(data) {
+    applyingRemote = true;
+    try { window.RTD.importState(data); }
+    finally { applyingRemote = false; }
+  }
+
+  // Called by app.js after every local change while signed in.
+  function onLocalChange(stateData) {
+    if (applyingRemote) return;   // don't echo a cloud snapshot back up
+    schedulePush(stateData);
+  }
+
+  /* ---- sign-in / sign-out lifecycle ---- */
+
+  async function onSignedIn(session) {
+    user = session.user;
+    window.RTD.onPersist = onLocalChange;
+
+    const local = window.RTD.exportState();
+    const cloud = await pull();
+
+    // Union watched so no tick is ever lost by signing in on a new device.
+    const merged = {
+      watched: Array.from(new Set([
+        ...(local.watched || []),
+        ...((cloud && cloud.watched) || []),
+      ])),
+      route: (cloud && cloud.route) || local.route,
+      order: (cloud && cloud.order) || local.order,
+      hide: cloud ? !!cloud.hide : !!local.hide,
+    };
+
+    applyRemote(merged);   // updates the UI + localStorage
+    await push(merged);    // seed / reconcile the cloud row
+    renderAuthed();
+  }
+
+  function onSignedOut() {
+    user = null;
+    window.RTD.onPersist = null;
+    clearTimeout(pushTimer);
+    renderAnon();
+  }
+
+  sb.auth.getSession().then(({ data }) => {
+    if (data.session) onSignedIn(data.session);
+    else renderAnon();
+  });
+  sb.auth.onAuthStateChange((event, session) => {
+    if (session && !user) onSignedIn(session);
+    else if (!session && user) onSignedOut();
+  });
+
+  /* ---- auth form actions ---- */
+
+  async function doAuth(mode, email, password) {
+    email = email.trim();
+    if (!email || !password) return err('Enter an email and password.');
+    if (password.length < 6) return err('Password must be at least 6 characters.');
+
+    setBusy(true);
+    try {
+      if (mode === 'signup') {
+        const { data, error } = await sb.auth.signUp({ email, password });
+        if (error) return err(error.message);
+        if (!data.session) {
+          // Email confirmation is on for this project.
+          return err('Account created — check your email to confirm, then sign in.', 'ok');
+        }
+      } else {
+        const { error } = await sb.auth.signInWithPassword({ email, password });
+        if (error) return err(error.message);
+      }
+      closeModal();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  /* ================= UI ================= */
+
+  function buildUI() {
+    // Account chip (fixed, top-right) — independent of the page layout.
+    const chip = document.createElement('button');
+    chip.className = 'acct-chip';
+    chip.type = 'button';
+    chip.innerHTML = '<span class="acct-chip__dot"></span><span class="acct-chip__t">Sign in</span>';
+    document.body.appendChild(chip);
+
+    // Modal
+    const overlay = document.createElement('div');
+    overlay.className = 'acct-overlay';
+    overlay.hidden = true;
+    overlay.innerHTML = `
+      <div class="acct-modal" role="dialog" aria-modal="true" aria-label="Account">
+        <button class="acct-x" type="button" aria-label="Close">&times;</button>
+        <h2 class="acct-h">Save your progress</h2>
+        <p class="acct-sub">Create an account to sync your ticks across every device — phone, laptop, anywhere.</p>
+        <div class="acct-tabs">
+          <button class="acct-tab is-on" data-mode="signin" type="button">Sign in</button>
+          <button class="acct-tab" data-mode="signup" type="button">Create account</button>
+        </div>
+        <form class="acct-form">
+          <label>Email<input type="email" name="email" autocomplete="email" required></label>
+          <label>Password<input type="password" name="password" autocomplete="current-password" minlength="6" required></label>
+          <p class="acct-msg" hidden></p>
+          <button class="acct-go" type="submit">Sign in</button>
+        </form>
+      </div>`;
+    document.body.appendChild(overlay);
+
+    const modal = overlay.querySelector('.acct-modal');
+    const form = overlay.querySelector('.acct-form');
+    const msg = overlay.querySelector('.acct-msg');
+    const goBtn = overlay.querySelector('.acct-go');
+    const tabs = [...overlay.querySelectorAll('.acct-tab')];
+    let mode = 'signin';
+
+    function setMode(m) {
+      mode = m;
+      tabs.forEach((t) => t.classList.toggle('is-on', t.dataset.mode === m));
+      goBtn.textContent = m === 'signup' ? 'Create account' : 'Sign in';
+      form.password.autocomplete = m === 'signup' ? 'new-password' : 'current-password';
+      hideMsg();
+    }
+    tabs.forEach((t) => (t.onclick = () => setMode(t.dataset.mode)));
+
+    chip.onclick = () => { if (user) return openMenu(); openModal(); };
+    overlay.querySelector('.acct-x').onclick = closeModal;
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !overlay.hidden) closeModal(); });
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      doAuth(mode, form.email.value, form.password.value);
+    });
+
+    function openModal() { setMode('signin'); overlay.hidden = false; setTimeout(() => form.email.focus(), 50); }
+    function closeModal() { overlay.hidden = true; form.reset(); hideMsg(); }
+    function showMsg(text, kind) { msg.hidden = false; msg.textContent = text; msg.className = 'acct-msg' + (kind === 'ok' ? ' is-ok' : ' is-err'); }
+    function hideMsg() { msg.hidden = true; msg.textContent = ''; }
+
+    // menu (sign out) for the signed-in chip
+    const menu = document.createElement('div');
+    menu.className = 'acct-menu';
+    menu.hidden = true;
+    menu.innerHTML = '<div class="acct-menu__email"></div><button class="acct-menu__out" type="button">Sign out</button>';
+    document.body.appendChild(menu);
+    menu.querySelector('.acct-menu__out').onclick = async () => { menu.hidden = true; await sb.auth.signOut(); };
+    function openMenu() { menu.hidden = !menu.hidden; }
+    document.addEventListener('click', (e) => {
+      if (!menu.hidden && !menu.contains(e.target) && e.target !== chip && !chip.contains(e.target)) menu.hidden = true;
+    });
+
+    return { chip, overlay, openModal, closeModal, showMsg, hideMsg, setBusy: (b) => { goBtn.disabled = b; goBtn.textContent = b ? '…' : (mode === 'signup' ? 'Create account' : 'Sign in'); }, menu };
+  }
+
+  // helpers bound to the built UI
+  function err(text, kind) { ui.showMsg(text, kind || 'err'); return false; }
+  function setBusy(b) { ui.setBusy(b); }
+  function closeModal() { ui.closeModal(); }
+
+  function renderAnon() {
+    ui.chip.classList.remove('is-authed');
+    ui.chip.querySelector('.acct-chip__t').textContent = 'Sign in';
+    ui.menu.hidden = true;
+  }
+  function renderAuthed() {
+    ui.chip.classList.add('is-authed');
+    const short = (user.email || 'account').split('@')[0];
+    ui.chip.querySelector('.acct-chip__t').textContent = short;
+    ui.menu.querySelector('.acct-menu__email').textContent = user.email || '';
+  }
+
+  function setSaved(kind) {
+    // subtle colour pulse on the chip dot: saving / ok / error
+    ui.chip.dataset.save = kind;
+  }
+
+  /* ================= styles ================= */
+
+  function injectStyles() {
+    const css = `
+    .acct-chip{position:fixed;top:.7rem;right:.7rem;z-index:50;display:inline-flex;align-items:center;gap:.5rem;
+      font:600 .82rem/1 var(--body);color:var(--type);background:var(--plate-2);border:1px solid var(--rule);
+      border-radius:999px;padding:.5rem .8rem;cursor:pointer;box-shadow:var(--shadow);transition:border-color .2s,transform .1s}
+    .acct-chip:hover{border-color:var(--brass)}
+    .acct-chip:active{transform:translateY(1px)}
+    .acct-chip__dot{width:8px;height:8px;border-radius:50%;background:var(--type-faint);transition:background .3s}
+    .acct-chip.is-authed .acct-chip__dot{background:var(--green)}
+    .acct-chip[data-save="saving"] .acct-chip__dot{background:var(--brass)}
+    .acct-chip[data-save="ok"] .acct-chip__dot{background:var(--green)}
+    .acct-chip[data-save="error"] .acct-chip__dot{background:#b4553f}
+    .acct-chip__t{max-width:9rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+    .acct-menu{position:fixed;top:3rem;right:.7rem;z-index:51;background:var(--plate-2);border:1px solid var(--rule);
+      border-radius:12px;padding:.6rem;box-shadow:var(--shadow);min-width:12rem}
+    .acct-menu__email{font:500 .78rem/1.3 var(--body);color:var(--type-dim);padding:.2rem .3rem .5rem;
+      word-break:break-all;border-bottom:1px solid var(--rule-soft);margin-bottom:.5rem}
+    .acct-menu__out{width:100%;font:600 .85rem/1 var(--body);color:var(--type);background:var(--plate);
+      border:1px solid var(--rule);border-radius:8px;padding:.55rem;cursor:pointer}
+    .acct-menu__out:hover{border-color:var(--brass);color:var(--brass)}
+
+    .acct-overlay{position:fixed;inset:0;z-index:60;display:grid;place-items:center;padding:1rem;
+      background:rgba(0,0,0,.62);backdrop-filter:blur(3px)}
+    .acct-modal{position:relative;width:min(24rem,100%);background:var(--plate);border:1px solid var(--rule);
+      border-radius:16px;padding:1.6rem 1.4rem 1.5rem;box-shadow:var(--shadow);animation:acct-pop .2s ease}
+    @keyframes acct-pop{from{opacity:0;transform:translateY(10px) scale(.98)}}
+    .acct-x{position:absolute;top:.6rem;right:.8rem;background:none;border:0;color:var(--type-dim);font-size:1.5rem;
+      line-height:1;cursor:pointer}
+    .acct-x:hover{color:var(--type)}
+    .acct-h{font:700 1.35rem/1.1 var(--body);color:var(--type);margin:0 0 .3rem}
+    .acct-sub{font:400 .88rem/1.45 var(--body);color:var(--type-dim);margin:0 0 1.1rem}
+    .acct-tabs{display:flex;gap:.4rem;background:var(--plate-2);border:1px solid var(--rule-soft);
+      border-radius:10px;padding:.25rem;margin-bottom:1rem}
+    .acct-tab{flex:1;font:600 .85rem/1 var(--body);color:var(--type-dim);background:none;border:0;border-radius:7px;
+      padding:.55rem;cursor:pointer;transition:.15s}
+    .acct-tab.is-on{background:var(--plate);color:var(--type);box-shadow:0 1px 3px rgba(0,0,0,.3)}
+    .acct-form{display:flex;flex-direction:column;gap:.7rem}
+    .acct-form label{display:flex;flex-direction:column;gap:.3rem;font:600 .78rem/1 var(--body);color:var(--type-dim)}
+    .acct-form input{font:400 .95rem/1 var(--body);color:var(--type);background:var(--plate-2);
+      border:1px solid var(--rule);border-radius:9px;padding:.65rem .75rem;outline:none;transition:border-color .15s}
+    .acct-form input:focus{border-color:var(--brass)}
+    .acct-msg{font:500 .82rem/1.4 var(--body);margin:.1rem 0 0;padding:.5rem .65rem;border-radius:8px}
+    .acct-msg.is-err{color:#e69a86;background:rgba(180,85,63,.14)}
+    .acct-msg.is-ok{color:var(--stamp);background:var(--brass-glow)}
+    .acct-go{margin-top:.3rem;font:700 .95rem/1 var(--body);color:var(--ink);background:var(--brass);
+      border:0;border-radius:10px;padding:.75rem;cursor:pointer;transition:filter .15s}
+    .acct-go:hover{filter:brightness(1.08)}
+    .acct-go:disabled{opacity:.6;cursor:default}
+    @media(max-width:520px){.acct-chip__t{max-width:6rem}}
+    `;
+    const tag = document.createElement('style');
+    tag.textContent = css;
+    document.head.appendChild(tag);
+  }
+}());
