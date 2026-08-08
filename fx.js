@@ -207,7 +207,6 @@
 
   /* ---------------------------------------- boot (each guarded) */
   try { starfield(); } catch (e) {}
-  try { stage(); } catch (e) {}
   try { hero(); } catch (e) {}
   try { roster(); } catch (e) {}
 }());
