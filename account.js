@@ -37,6 +37,11 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
   let applyingRemote = false;
   let pushTimer = null;
 
+  // Leaderboard / circle state.
+  let me = { display_name: null, group_code: null };
+  let lbEl = null;
+  let boardTimer = null;
+
   /* ---- cloud read / write ---- */
 
   async function pull() {
@@ -54,10 +59,14 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
     const { error } = await sb.from('progress').upsert({
       user_id: user.id,
       data: stateData,
+      watched_count: (stateData.watched || []).length,
       updated_at: new Date().toISOString(),
     });
     if (error) { console.warn('push failed', error.message); setSaved('error'); }
-    else setSaved('ok');
+    else {
+      setSaved('ok');
+      if (me.group_code) { clearTimeout(boardTimer); boardTimer = setTimeout(renderBoard, 1500); }
+    }
   }
 
   function schedulePush(stateData) {
@@ -101,13 +110,17 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
     applyRemote(merged);   // updates the UI + localStorage
     await push(merged);    // seed / reconcile the cloud row
     renderAuthed();
+    await loadProfile();
+    renderBoard();
   }
 
   function onSignedOut() {
     user = null;
+    me = { display_name: null, group_code: null };
     window.RTD.onPersist = null;
     clearTimeout(pushTimer);
     renderAnon();
+    renderBoard();
   }
 
   sb.auth.getSession().then(({ data }) => {
@@ -120,6 +133,9 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
     if (session && !user) onSignedIn(session);
     else if (!session && user) onSignedOut();
   });
+
+  lbEl = buildBoard();
+  renderBoard();
 
   /* ---- auth form actions ---- */
 
@@ -145,6 +161,124 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
     } finally {
       setBusy(false);
     }
+  }
+
+  /* ---- leaderboard / circles ---- */
+
+  function escapeHtml(s) {
+    return String(s || '').replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  function code6() {
+    const A = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let s = '';
+    for (let i = 0; i < 6; i++) s += A[Math.floor(Math.random() * A.length)];
+    return s;
+  }
+
+  async function loadProfile() {
+    const { data, error } = await sb.from('progress')
+      .select('display_name, group_code').eq('user_id', user.id).maybeSingle();
+    if (!error && data) { me.display_name = data.display_name; me.group_code = data.group_code; }
+  }
+
+  async function saveProfile(fields) {
+    const row = Object.assign({ user_id: user.id, updated_at: new Date().toISOString() }, fields);
+    const { error } = await sb.from('progress').upsert(row);
+    if (error) { console.warn('profile save failed', error.message); return false; }
+    Object.assign(me, fields);
+    return true;
+  }
+
+  async function loadBoard() {
+    if (!me.group_code) return [];
+    const { data, error } = await sb.from('progress')
+      .select('user_id, display_name, watched_count, updated_at')
+      .eq('group_code', me.group_code)
+      .order('watched_count', { ascending: false });
+    if (error) { console.warn('board failed', error.message); return []; }
+    return data || [];
+  }
+
+  function buildBoard() {
+    const main = document.querySelector('main');
+    const finale = document.querySelector('.finale');
+    if (!main || !finale) return null;
+    const sec = document.createElement('section');
+    sec.className = 'lb';
+    sec.innerHTML =
+      '<div class="lb__head"><span class="lb__l">Circle</span>' +
+      '<h2 class="lb__t">Friends &amp; family leaderboard</h2></div>' +
+      '<div class="lb__body"></div>';
+    main.insertBefore(sec, finale);
+    return sec;
+  }
+
+  function boardErr(m) {
+    const e = lbEl && lbEl.querySelector('.lb__err');
+    if (e) { e.hidden = false; e.textContent = m; }
+  }
+
+  async function renderBoard() {
+    if (!lbEl) return;
+    const body = lbEl.querySelector('.lb__body');
+
+    if (!user) {
+      body.innerHTML = '<p class="lb__msg">Sign in (top-right) to compare your progress with friends and family.</p>';
+      return;
+    }
+
+    if (!me.group_code) {
+      body.innerHTML =
+        '<p class="lb__msg">Start a circle and share the code, or join one you were given.</p>' +
+        '<div class="lb__form">' +
+          '<input class="lb__name" type="text" maxlength="24" placeholder="Your name" value="' + escapeHtml(me.display_name) + '">' +
+          '<div class="lb__row">' +
+            '<button class="lb__btn lb__create" type="button">Create a circle</button>' +
+            '<span class="lb__or">or</span>' +
+            '<input class="lb__code" type="text" maxlength="6" placeholder="CODE" autocapitalize="characters">' +
+            '<button class="lb__btn lb__join" type="button">Join</button>' +
+          '</div>' +
+          '<p class="lb__err" hidden></p>' +
+        '</div>';
+      const nameOf = () => body.querySelector('.lb__name').value.trim();
+      body.querySelector('.lb__create').onclick = async () => {
+        if (!nameOf()) return boardErr('Enter your name first.');
+        if (await saveProfile({ display_name: nameOf(), group_code: code6() })) renderBoard();
+      };
+      body.querySelector('.lb__join').onclick = async () => {
+        const c = body.querySelector('.lb__code').value.trim().toUpperCase();
+        if (!nameOf()) return boardErr('Enter your name first.');
+        if (!/^[A-Z0-9]{6}$/.test(c)) return boardErr('Enter the 6-character circle code.');
+        if (await saveProfile({ display_name: nameOf(), group_code: c })) renderBoard();
+      };
+      return;
+    }
+
+    const rows = await loadBoard();
+    const max = Math.max(1, ...rows.map((r) => r.watched_count || 0));
+    const items = rows.map((r, i) => {
+      const mine = r.user_id === user.id ? ' is-me' : '';
+      const pct = Math.round(((r.watched_count || 0) / max) * 100);
+      return '<li class="lb__item' + mine + '">' +
+        '<span class="lb__rank">' + (i + 1) + '</span>' +
+        '<span class="lb__who">' + escapeHtml(r.display_name || 'Anonymous') + '</span>' +
+        '<span class="lb__bar"><span style="width:' + pct + '%"></span></span>' +
+        '<span class="lb__n">' + (r.watched_count || 0) + '</span></li>';
+    }).join('');
+    body.innerHTML =
+      '<ol class="lb__list">' + (items || '<p class="lb__msg">No one here yet.</p>') + '</ol>' +
+      '<div class="lb__foot"><span class="lb__share">Invite code: <strong>' + me.group_code + '</strong></span>' +
+      '<button class="lb__btn lb__copy" type="button">Copy</button>' +
+      '<button class="lb__btn lb__leave" type="button">Leave</button></div>';
+    body.querySelector('.lb__copy').onclick = () => {
+      navigator.clipboard && navigator.clipboard.writeText(me.group_code);
+      body.querySelector('.lb__copy').textContent = 'Copied';
+    };
+    body.querySelector('.lb__leave').onclick = async () => {
+      if (await saveProfile({ group_code: null })) { me.group_code = null; renderBoard(); }
+    };
   }
 
   async function sendReset(email) {
