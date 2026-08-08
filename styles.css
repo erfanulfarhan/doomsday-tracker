@@ -776,3 +776,50 @@ main { position: relative; z-index: 1; }
 @media (prefers-reduced-motion: reduce) {
   .hero-card__disc.spin svg, .hero-card__disc.pulse svg { animation: none; }
 }
+
+/* ================================================ hero stage: orbiting characters */
+.stage {
+  position: relative; display: grid; place-items: center; overflow: hidden;
+  height: min(56vh, 440px); margin: 1.2rem 0 2.4rem;
+  border: 1px solid var(--rule); border-radius: 18px;
+  background: radial-gradient(circle at 50% 42%, rgba(200,153,60,.07), transparent 62%), var(--plate);
+}
+.stage__aura {
+  position: absolute; inset: -35%; z-index: 0; filter: blur(70px); opacity: .8;
+  background: conic-gradient(from 0deg,
+    rgba(200,153,60,.14), rgba(59,107,78,.12), rgba(90,63,166,.14), rgba(155,43,58,.12), rgba(200,153,60,.14));
+  animation: stage-rot 42s linear infinite;
+}
+.stage__orbit { position: relative; z-index: 1; width: min(82vw, 400px); height: min(82vw, 400px); }
+.stage__core {
+  position: absolute; left: 50%; top: 50%; width: 78px; height: 78px; margin: -39px; border-radius: 50%;
+  background: radial-gradient(circle at 50% 40%, #fff 4%, #f0c86a 26%, #c8993c 50%, #7a1f1f 92%);
+  box-shadow: 0 0 42px rgba(200,153,60,.6), 0 0 90px rgba(160,40,40,.4);
+  animation: core-pulse 3s ease-in-out infinite;
+}
+.orbit { position: absolute; inset: 0; }
+.orbit--outer { animation: stage-rot 46s linear infinite; }
+.orbit--inner { animation: stage-rot 30s linear infinite reverse; }
+.orbiter { position: absolute; transform: translate(-50%, -50%); }
+.orbiter__disc {
+  display: grid; place-items: center; width: 3rem; height: 3rem; border-radius: 50%;
+  background: linear-gradient(150deg, var(--c1), var(--c2));
+  box-shadow: 0 4px 14px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.22);
+}
+/* counter-rotate the discs so emblems stay upright as the rings turn */
+.orbit--outer .orbiter__disc { animation: stage-rot-rev 46s linear infinite; }
+.orbit--inner .orbiter__disc { animation: stage-rot 30s linear infinite; }
+.orbiter__disc svg { width: 1.7rem; height: 1.7rem; overflow: visible; }
+.orbiter__disc svg * { fill: none; stroke: #fff; stroke-width: 6; stroke-linecap: round; stroke-linejoin: round; }
+.stage__cap { position: absolute; bottom: 1rem; z-index: 2; text-align: center; padding: 0 1rem; }
+.stage__l { color: var(--brass); letter-spacing: .2em; text-transform: uppercase; font: 700 .7rem/1 var(--body); margin: 0; }
+.stage__t {
+  font-family: var(--display); font-weight: 400; font-size: clamp(1.6rem, 5vw, 2.4rem);
+  margin: .35rem 0 0; color: var(--type); text-shadow: 0 0 24px rgba(200,153,60,.28);
+}
+@keyframes stage-rot { to { transform: rotate(360deg); } }
+@keyframes stage-rot-rev { to { transform: rotate(-360deg); } }
+@keyframes core-pulse { 0%,100% { transform: scale(1); opacity: .95; } 50% { transform: scale(1.13); opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .stage__aura, .orbit, .orbiter__disc, .stage__core { animation: none; }
+}

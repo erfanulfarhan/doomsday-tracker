@@ -114,6 +114,50 @@
         duration: 850, delay: A.stagger(70, { start: start }), easing: 'easeInOutSine' });
   }
 
+  var COLOR = {};
+  ROSTER.forEach(function (r) { COLOR[r.name] = { c1: r.c1, c2: r.c2 }; });
+
+  /* ---------------------------------------- hero "stage": orbiting characters */
+  function orbiters(ring, names, rFrac) {
+    var N = names.length;
+    names.forEach(function (name, i) {
+      var ang = (i / N) * 2 * Math.PI - Math.PI / 2;
+      var em = EMBLEMS[name] || { svg: '' };
+      var col = COLOR[name] || { c1: '#888', c2: '#333' };
+      var o = document.createElement('div');
+      o.className = 'orbiter';
+      o.style.left = (50 + rFrac * 100 * Math.cos(ang)) + '%';
+      o.style.top = (50 + rFrac * 100 * Math.sin(ang)) + '%';
+      o.innerHTML = '<span class="orbiter__disc" style="--c1:' + col.c1 + ';--c2:' + col.c2 + '">' +
+        '<svg viewBox="0 0 100 100">' + em.svg + '</svg></span>';
+      ring.appendChild(o);
+    });
+  }
+
+  function stage() {
+    var main = document.querySelector('main');
+    if (!main) return;
+    var sec = document.createElement('section');
+    sec.className = 'stage';
+    sec.setAttribute('aria-hidden', 'true');
+    sec.innerHTML =
+      '<div class="stage__aura"></div>' +
+      '<div class="stage__orbit">' +
+        '<div class="stage__core"></div>' +
+        '<div class="orbit orbit--outer"></div>' +
+        '<div class="orbit orbit--inner"></div>' +
+      '</div>' +
+      '<div class="stage__cap">' +
+        '<p class="stage__l">The multiverse is collapsing</p>' +
+        '<h2 class="stage__t">Assemble before Doomsday</h2>' +
+      '</div>';
+    main.insertBefore(sec, main.firstChild);
+
+    var names = Object.keys(EMBLEMS);
+    orbiters(sec.querySelector('.orbit--outer'), names.slice(0, 6), 0.46);
+    orbiters(sec.querySelector('.orbit--inner'), names.slice(6).concat(names.slice(0, 1)), 0.24);
+  }
+
   function roster() {
     var finale = document.querySelector('.finale');
     if (!finale) return;
@@ -163,6 +207,7 @@
 
   /* ---------------------------------------- boot (each guarded) */
   try { starfield(); } catch (e) {}
+  try { stage(); } catch (e) {}
   try { hero(); } catch (e) {}
   try { roster(); } catch (e) {}
 }());
