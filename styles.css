@@ -850,3 +850,30 @@ main { position: relative; z-index: 1; }
 .lb__share strong { color: var(--brass); font-family: var(--mono); letter-spacing: .12em; }
 .lb__foot .lb__leave { margin-left: auto; }
 @media (max-width: 460px) { .lb__item { grid-template-columns: 1.4rem 1fr 4rem auto; gap: .5rem; } }
+
+/* ================================================ stats charts (native SVG, bklit-style) */
+.stats { margin-top: clamp(2rem, 5vw, 3rem); }
+.stats__head { margin-bottom: 1rem; }
+.stats__l { color: var(--brass); font: 700 .72rem/1 var(--body); letter-spacing: .22em; text-transform: uppercase; }
+.stats__t { font-family: var(--display); font-weight: 400; font-size: clamp(1.5rem, 4.5vw, 2.2rem); margin: .35rem 0 0; }
+.stats__grid { display: grid; grid-template-columns: minmax(160px, 220px) 1fr; gap: 1rem; align-items: stretch; }
+.stat-card { background: var(--plate); border: 1px solid var(--rule); border-radius: 14px; padding: 1.2rem; }
+.stat-donut { display: grid; place-items: center; position: relative; }
+.stat-donut svg { width: 150px; height: 150px; }
+.dnut-track { fill: none; stroke: var(--rule-soft); stroke-width: 12; }
+.dnut-fill { fill: none; stroke: url(#dnutg); stroke-width: 12; stroke-linecap: round; transition: stroke-dashoffset .7s cubic-bezier(.22,.61,.36,1); }
+#dnutg .g0 { stop-color: var(--green); }
+#dnutg .g1 { stop-color: var(--brass); }
+.dnut-center { position: absolute; text-align: center; pointer-events: none; }
+.dnut-center strong { display: block; font: 800 1.6rem/1 var(--body); color: var(--type); }
+.dnut-center span { font-family: var(--mono); font-size: .72rem; color: var(--type-dim); letter-spacing: .05em; }
+.stat-phases { display: flex; flex-direction: column; justify-content: center; gap: .6rem; }
+.pbar { display: grid; grid-template-columns: 7rem 1fr 2.8rem; align-items: center; gap: .6rem; }
+.pbar__name { font-size: .8rem; color: var(--type-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pbar__track { height: 8px; background: var(--rule-soft); border-radius: 999px; overflow: hidden; }
+.pbar__fill { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--green), var(--brass)); border-radius: inherit; transition: width .6s ease; }
+.pbar__n { font-family: var(--mono); font-size: .78rem; color: var(--type-dim); text-align: right; font-variant-numeric: tabular-nums; }
+@media (max-width: 560px) {
+  .stats__grid { grid-template-columns: 1fr; }
+  .pbar { grid-template-columns: 6rem 1fr 2.6rem; }
+}

@@ -188,6 +188,7 @@
     renderHeader(s, entries);
     renderControls();
     renderList(entries);
+    renderStats(entries, s);
     renderFinale(s);
   }
 
@@ -379,6 +380,59 @@
     n.className = `tag ${cls}`;
     n.textContent = content;
     return n;
+  }
+
+  /* ------------------------------------------------ stats charts (native SVG) */
+
+  let statsEl = null;
+  const DONUT_C = 2 * Math.PI * 52;
+
+  function ensureStats() {
+    if (statsEl) return;
+    statsEl = document.createElement('section');
+    statsEl.className = 'stats';
+    const rows = PHASES.map((ph) =>
+      '<div class="pbar" data-phase="' + ph.key + '" hidden>' +
+        '<span class="pbar__name">' + ph.name + '</span>' +
+        '<span class="pbar__track"><span class="pbar__fill"></span></span>' +
+        '<span class="pbar__n"></span></div>').join('');
+    statsEl.innerHTML =
+      '<div class="stats__head"><span class="stats__l">Your stats</span>' +
+      '<h2 class="stats__t">Progress at a glance</h2></div>' +
+      '<div class="stats__grid">' +
+        '<div class="stat-card stat-donut">' +
+          '<svg viewBox="0 0 120 120" aria-hidden="true">' +
+            '<defs><linearGradient id="dnutg" x1="0" y1="0" x2="1" y2="1">' +
+              '<stop offset="0" class="g0"/><stop offset="1" class="g1"/></linearGradient></defs>' +
+            '<circle class="dnut-track" cx="60" cy="60" r="52"></circle>' +
+            '<circle class="dnut-fill" cx="60" cy="60" r="52" transform="rotate(-90 60 60)" ' +
+              'stroke-dasharray="' + DONUT_C.toFixed(1) + '" stroke-dashoffset="' + DONUT_C.toFixed(1) + '"></circle>' +
+          '</svg>' +
+          '<div class="dnut-center"><strong class="dnut-pct">0%</strong><span class="dnut-sub">0 / 0</span></div>' +
+        '</div>' +
+        '<div class="stat-card stat-phases">' + rows + '</div>' +
+      '</div>';
+    el.finale.parentNode.insertBefore(statsEl, el.finale);
+  }
+
+  function renderStats(entries, s) {
+    ensureStats();
+    const off = DONUT_C * (1 - (s.pct || 0) / 100);
+    statsEl.querySelector('.dnut-fill').setAttribute('stroke-dashoffset', off.toFixed(1));
+    statsEl.querySelector('.dnut-pct').textContent = s.pct + '%';
+    statsEl.querySelector('.dnut-sub').textContent = s.done + ' / ' + s.total;
+
+    PHASES.forEach((ph) => {
+      const row = statsEl.querySelector('.pbar[data-phase="' + ph.key + '"]');
+      if (!row) return;
+      const inPhase = entries.filter((e) => e.phase === ph.key);
+      const total = inPhase.length;
+      if (!total) { row.hidden = true; return; }
+      const done = inPhase.filter((e) => state.watched.has(e.id)).length;
+      row.hidden = false;
+      row.querySelector('.pbar__fill').style.width = Math.round((done / total) * 100) + '%';
+      row.querySelector('.pbar__n').textContent = done + '/' + total;
+    });
   }
 
   function renderFinale(s) {
