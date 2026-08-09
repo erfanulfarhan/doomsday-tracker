@@ -11,6 +11,7 @@
   'use strict';
 
   var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var fine = !!(window.matchMedia && window.matchMedia('(hover:hover) and (pointer:fine)').matches);
   var A = window.anime || null;
 
   function debounce(fn, ms) { var t; return function () { clearTimeout(t); t = setTimeout(fn, ms); }; }
@@ -21,14 +22,9 @@
     return !(window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches);
   }
 
-  // Infinity-Stone palette, weighted toward Marvel red + gold.
-  var STONES = ['#ff3b3b', '#ffd23b', '#a24bff', '#38b6ff', '#46e07a', '#ff8a3b'];
-  function pick() {
-    var r = Math.random();
-    if (r < 0.42) return '#ff3b3b';   // reality red (Marvel brand)
-    if (r < 0.64) return '#ffd23b';   // mind gold
-    return STONES[2 + Math.floor(Math.random() * 4)];
-  }
+  // The six Infinity Stone colours: space, mind, reality, power, time, soul.
+  var STONES = ['#3b82f6', '#f5d020', '#e23636', '#a24bff', '#46e07a', '#ff8c42'];
+  function pick() { return STONES[Math.floor(Math.random() * STONES.length)]; }
 
   function field() {
     var c = document.createElement('canvas');
@@ -158,8 +154,12 @@
 
     seed();
     addEventListener('resize', debounce(seed, 200));
-    addEventListener('pointermove', function (e) { mouse.x = e.clientX * dpr; mouse.y = e.clientY * dpr; });
-    addEventListener('pointerdown', function (e) { burst(e.clientX * dpr, e.clientY * dpr); });
+    // Pointer reactions (orb, node pull, click burst) are mouse-only — on touch
+    // devices they'd fire on every tap/scroll, which looks like random pop-ups.
+    if (fine) {
+      addEventListener('pointermove', function (e) { mouse.x = e.clientX * dpr; mouse.y = e.clientY * dpr; });
+      addEventListener('pointerdown', function (e) { burst(e.clientX * dpr, e.clientY * dpr); });
+    }
     window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').addEventListener &&
       window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function () { dark = isDark(); });
     requestAnimationFrame(frame);
@@ -180,6 +180,53 @@
     }
   }
 
+  /* the six Infinity Stones — colour, original symbol, and what each governs */
+  function stones() {
+    var finale = document.querySelector('.finale');
+    if (!finale) return;
+    var DATA = [
+      { n: 'Space',   c: '#3b82f6', sub: 'The Tesseract',      m: 'Bends space itself — open a portal and step anywhere across the universe.',
+        svg: '<path d="M30 34 L50 24 L70 34 L70 62 L50 72 L30 62 Z"/><path d="M30 34 L50 44 L70 34"/><path d="M50 44 V72"/>' },
+      { n: 'Mind',    c: '#f5d020', sub: 'Sentience',          m: 'Grants and controls consciousness — it gave Vision his mind and his life.',
+        svg: '<circle cx="50" cy="48" r="9"/><path d="M50 30V16"/><path d="M50 66V80"/><path d="M32 48H18"/><path d="M68 48H82"/><path d="M37 35 27 25"/><path d="M63 35 73 25"/><path d="M37 61 27 71"/><path d="M63 61 73 71"/>' },
+      { n: 'Reality', c: '#e23636', sub: 'The Aether',         m: 'Warps reality into whatever the wielder imagines — rewriting what is real.',
+        svg: '<path d="M50 20 C64 40 72 52 72 60 a22 22 0 1 1 -44 0 C28 52 36 40 50 20 Z"/>' },
+      { n: 'Power',   c: '#a24bff', sub: 'The Orb',            m: 'Raw, cataclysmic energy — enough to wipe out a planet in a single strike.',
+        svg: '<path d="M50 16 L58 42 L84 42 L62 58 L70 84 L50 66 L30 84 L38 58 L16 42 L42 42 Z"/>' },
+      { n: 'Time',    c: '#46e07a', sub: 'Eye of Agamotto',    m: 'Rewind, replay, or freeze time — undo any moment, or trap it in a loop.',
+        svg: '<path d="M74 50 a24 24 0 1 1 -7 -17"/><path d="M67 20 69 33 56 35"/><circle cx="50" cy="50" r="5"/>' },
+      { n: 'Soul',    c: '#ff8c42', sub: 'The Soul World',     m: 'The most mysterious — it perceives, manipulates, and can hold living souls.',
+        svg: '<path d="M50 78 C34 70 30 54 40 42 C44 50 48 48 48 40 C48 30 44 26 50 18 C58 30 70 40 66 58 C64 70 58 74 50 78 Z"/>' },
+    ];
+    var sec = document.createElement('section');
+    sec.className = 'stones';
+    sec.innerHTML =
+      '<div class="stones__head"><span class="stones__l">The six Infinity Stones</span>' +
+      '<h2 class="stones__t">Six singularities. One gauntlet.</h2>' +
+      '<p class="stones__d">Each stone commands one essential aspect of existence — the prize the whole road runs toward.</p></div>' +
+      '<div class="stones__grid">' + DATA.map(function (s) {
+        return '<article class="stone" style="--sc:' + s.c + '">' +
+          '<span class="stone__gem"><svg viewBox="0 0 100 100" aria-hidden="true">' + s.svg + '</svg></span>' +
+          '<h3 class="stone__n">' + s.n + ' Stone</h3>' +
+          '<span class="stone__sub">' + s.sub + '</span>' +
+          '<p class="stone__m">' + s.m + '</p></article>';
+      }).join('') + '</div>';
+    finale.parentNode.insertBefore(sec, finale);
+
+    var items = [].slice.call(sec.querySelectorAll('.stone'));
+    if (reduce || !A) { items.forEach(function (el) { el.style.opacity = 1; }); return; }
+    items.forEach(function (el) { el.style.opacity = 0; });
+    var io = new IntersectionObserver(function (es) {
+      es.forEach(function (e) {
+        if (!e.isIntersecting) return; io.unobserve(e.target);
+        var i = items.indexOf(e.target);
+        A({ targets: e.target, opacity: [0, 1], translateY: [26, 0], scale: [0.92, 1], duration: 650, delay: (i % 3) * 90, easing: 'easeOutCubic' });
+      });
+    }, { threshold: 0.2 });
+    items.forEach(function (el) { io.observe(el); });
+  }
+
   try { field(); } catch (e) {}
+  try { stones(); } catch (e) {}
   try { hero(); } catch (e) {}
 }());

@@ -877,3 +877,29 @@ main { position: relative; z-index: 1; }
   .stats__grid { grid-template-columns: 1fr; }
   .pbar { grid-template-columns: 6rem 1fr 2.6rem; }
 }
+
+/* ================================================ Infinity Stones showcase */
+.stones{margin-top:clamp(2.5rem,6vw,4rem)}
+.stones__head{text-align:center;max-width:54ch;margin:0 auto 1.9rem}
+.stones__l{color:var(--brass);font:700 .72rem/1 var(--body);letter-spacing:.22em;text-transform:uppercase}
+.stones__t{font-family:var(--display);font-weight:400;font-size:clamp(1.7rem,5vw,2.7rem);margin:.35rem 0 .3rem;color:var(--type)}
+.stones__d{color:var(--type-dim);font-size:.92rem;margin:0}
+.stones__grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:1rem}
+.stone{position:relative;text-align:center;padding:1.7rem 1rem 1.4rem;background:var(--plate);border:1px solid var(--rule);border-radius:16px;overflow:hidden;transition:transform .25s,border-color .25s,box-shadow .25s}
+.stone::before{content:"";position:absolute;inset:0;opacity:.12;pointer-events:none;transition:opacity .25s;
+  background:radial-gradient(120% 90% at 50% -10%,var(--sc),transparent 60%)}
+.stone:hover{transform:translateY(-6px);border-color:var(--sc);box-shadow:0 18px 42px rgba(0,0,0,.5),0 0 46px -12px var(--sc)}
+.stone:hover::before{opacity:.28}
+.stone__gem{display:grid;place-items:center;width:4.2rem;height:4.2rem;margin:0 auto .85rem;border-radius:50%;position:relative;z-index:1;
+  background:radial-gradient(circle at 38% 30%,rgba(255,255,255,.85) 0%,var(--sc) 44%,rgba(0,0,0,.55) 100%);
+  box-shadow:0 0 26px -4px var(--sc),inset 0 2px 6px rgba(255,255,255,.45),inset 0 -6px 12px rgba(0,0,0,.4);
+  animation:stone-float 5s ease-in-out infinite}
+.stone:nth-child(2n) .stone__gem{animation-delay:-1.6s}
+.stone:nth-child(3n) .stone__gem{animation-delay:-3s}
+@keyframes stone-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+.stone__gem svg{width:2rem;height:2rem;overflow:visible}
+.stone__gem svg *{fill:none;stroke:#fff;stroke-width:5;stroke-linecap:round;stroke-linejoin:round}
+.stone__n{position:relative;z-index:1;font-size:1.02rem;margin:0 0 .12rem;color:var(--type)}
+.stone__sub{position:relative;z-index:1;color:var(--sc);font-size:.72rem;letter-spacing:.05em;text-transform:uppercase;font-weight:700}
+.stone__m{position:relative;z-index:1;color:var(--type-dim);font-size:.8rem;line-height:1.42;margin:.65rem 0 0}
+@media(prefers-reduced-motion:reduce){.stone__gem{animation:none}}
