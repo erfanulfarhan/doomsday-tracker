@@ -11,7 +11,7 @@
    Signing in never destroys local ticks: on sign-in we UNION the
    local and cloud watched-sets, apply the result, and push it up.
    ============================================================= */
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } from './supa-lite.js';
 
 (function () {
   'use strict';
@@ -29,9 +29,9 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
     return;
   }
 
-  const sb = createClient(CFG.url, CFG.anon, {
-    auth: { persistSession: true, autoRefreshToken: true },
-  });
+  // The accounts Worker (api/worker.js). Supabase's free plan paused the old
+  // project and would not resume it alongside two other free projects.
+  const sb = createClient(CFG.url);
 
   let user = null;
   let applyingRemote = false;

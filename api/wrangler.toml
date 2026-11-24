@@ -1,0 +1,12 @@
+name = "doomsday-accounts"
+main = "worker.js"
+compatibility_date = "2026-11-01"
+workers_dev = true
+
+[[kv_namespaces]]
+binding = "KV"
+id = "b864adeeca514cf3959a44d86d54e0d4"
+
+[vars]
+# The first entry is the fallback CORS origin; reset links may only point here.
+ALLOWED_ORIGINS = "https://doomsday-tracker-orcin.vercel.app"
